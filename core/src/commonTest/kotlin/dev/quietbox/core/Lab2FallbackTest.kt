@@ -11,7 +11,6 @@ import dev.quietbox.core.cloud.CloudRequest
 import dev.quietbox.core.cloud.MockCloud
 import dev.quietbox.core.inbox.Fixtures
 import dev.quietbox.core.tasks.Category
-import dev.quietbox.core.tasks.ExtractTask
 import dev.quietbox.core.tasks.TriageTask
 import dev.quietbox.core.telemetry.Outcome
 import dev.quietbox.core.telemetry.Telemetry
@@ -32,15 +31,6 @@ class Lab2FallbackTest {
 
     private val invoice = Fixtures.all.first { it.message.id == "m01" }.message
     private val bloodTest = Fixtures.all.first { it.message.id == "m04" }.message
-
-    @Test
-    fun confidentLocalExtractionNeverCallsTheCloud() = runTest {
-        val cloud = MockCloud(1.milliseconds)
-        val result = pipeline(cloud).run(ExtractTask, invoice, invoice.subject)
-        assertEquals(Tier.ON_DEVICE, result.servedBy)
-        assertEquals("184,50 €", result.value!!.actions.single().amount)
-        assertTrue(cloud.sent.isEmpty())
-    }
 
     @Test
     fun sensitiveMessagesNeverReachTheCloud() = runTest {

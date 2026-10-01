@@ -41,6 +41,17 @@ class Lab3GuardrailTest {
         assertTrue(telemetry.spans.value.single().attempts.single().note.contains("2 tries"))
     }
 
+    @Test
+    fun confidentLocalExtractionNeverCallsTheCloud() = runTest {
+        val cloud = MockCloud(1.milliseconds)
+        val result = pipeline(cloud).run(ExtractTask, invoice, invoice.subject)
+        assertEquals(Tier.ON_DEVICE, result.servedBy)
+        assertEquals("184,50 €", result.value!!.actions.single().amount)
+        assertTrue(cloud.sent.isEmpty())
+    }
+
+    private val invoice = Fixtures.all.first { it.message.id == "m01" }.message
+
     private val release = Fixtures.all.first { it.message.id == "m09" }.message
     private val good = ActionItem(ActionType.DEADLINE, "RC to QA", "2026-10-16", null, null, "release candidate by 16 October")
 
