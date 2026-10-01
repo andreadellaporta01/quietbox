@@ -28,18 +28,18 @@ git checkout start
 ./gradlew :app:run               # the desktop app (the same Compose code that runs on Android and iOS)
 ```
 
-The first build downloads about 400 MB. If the Wi-Fi is struggling, ask us for the USB stick.
+The first build downloads about 390 MB. If the Wi-Fi is struggling, pair with a neighbour while yours finishes.
 
 Optional: if you have the Android SDK, `./gradlew :androidApp:installDebug` installs the app on a device. If you have Xcode, run `cd iosApp && xcodegen && open QuietBox.xcodeproj`.
 
 ### Engines
 
-Every command uses the **mock** engine by default. It is deterministic, works offline, and behaves like a real model would, including the occasional bad answer.
+Every command uses the **mock** engine by default. It is deterministic, works offline, and behaves like a real model would, including the occasional bad answer. That's all you need for the workshop.
 
-To use the real model through our proxy (the token is on the slide):
+Want the real model afterwards? Run the proxy with your own key (see [Running the proxy yourself](#running-the-proxy-yourself)), then:
 
 ```bash
-export QUIETBOX_ENGINE=proxy QUIETBOX_PROXY_URL=<on the slide> QUIETBOX_TOKEN=<on the slide>
+export QUIETBOX_ENGINE=proxy QUIETBOX_PROXY_URL=http://localhost:8787 QUIETBOX_TOKEN=any-shared-secret
 ./gradlew :app:run
 ./gradlew :core:eval -Pengine=proxy
 ```
