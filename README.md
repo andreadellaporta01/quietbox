@@ -1,7 +1,7 @@
 # QuietBox — the model is not the feature
 
 Workshop repo for **"The model is not the feature: designing invisible AI for mobile apps"**
-next.app devcon Berlin 2026 · Andrea Della Porta & Alessandro Finocchiaro
+next.app devcon Berlin · Friday 9 October 2026 · Andrea Della Porta & Alessandro Finocchiaro
 
 QuietBox is an inbox with no chatbot. The AI is in it, but you never see it as a feature:
 
@@ -22,7 +22,7 @@ The **AI X-ray** panel on the right shows every call: which route was picked and
 You need **JDK 17+** and nothing else. No Android SDK, no Xcode, no API key.
 
 ```bash
-git clone <URL-ON-THE-SLIDE> quietbox && cd quietbox
+git clone https://github.com/andreadellaporta01/quietbox && cd quietbox
 git checkout start
 ./gradlew :core:jvmTest          # ✅ setup works if this ends with "20 tests completed, 20 failed"
 ./gradlew :app:run               # the desktop app (the same Compose code that runs on Android and iOS)
