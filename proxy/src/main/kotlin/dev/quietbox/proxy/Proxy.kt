@@ -33,25 +33,27 @@ fun main() {
     embeddedServer(Netty, port = port, host = "0.0.0.0") { module(Claude(model, fallbacks), token) }.start(wait = true)
 }
 
-fun Application.module(cloud: CloudModel, token: String, perMinute: Int = 60) {
+fun Application.module(cloud: CloudModel, token: String, perMinute: Int = 120, roomPerMinute: Int = 2_000) {
     install(ContentNegotiation) { json() }
     install(CallLogging)
     val windows = ConcurrentHashMap<String, Pair<Long, AtomicLong>>()
+    val attendees = ConcurrentHashMap.newKeySet<String>()
     val tokensServed = AtomicLong()
 
     routing {
-        get("/health") { call.respondText("ok · ${cloud.name} · ${tokensServed.get()} tokens served") }
+        get("/health") { call.respondText("ok · ${cloud.name} · ${attendees.size} attendees · ${tokensServed.get()} tokens served") }
 
         post("/v1/task") {
             if (call.request.header("Authorization") != "Bearer $token") {
                 return@post call.respond(HttpStatusCode.Unauthorized, "bad token")
             }
-            val client = call.request.header("X-Forwarded-For") ?: call.request.local.remoteAddress
+            val attendee = call.request.header("X-Attendee") ?: call.request.local.remoteAddress
             val minute = System.currentTimeMillis() / 60_000
-            val window = windows.compute(client) { _, old -> if (old?.first == minute) old else minute to AtomicLong() }!!
-            if (window.second.incrementAndGet() > perMinute) {
+            fun hit(key: String) = windows.compute(key) { _, old -> if (old?.first == minute) old else minute to AtomicLong() }!!.second.incrementAndGet()
+            if (hit("attendee:$attendee") > perMinute || hit("room") > roomPerMinute) {
                 return@post call.respond(HttpStatusCode.TooManyRequests, "slow down")
             }
+            attendees += attendee
             val request = call.receive<CloudRequest>()
             try {
                 val reply = cloud.complete(request)

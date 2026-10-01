@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -12,10 +13,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import kotlin.random.Random
 
 class ProxyCloud(
     private val baseUrl: String,
     private val token: String,
+    private val attendee: String = Random.nextLong().toULong().toString(36),
     private val http: HttpClient = defaultClient(),
 ) : CloudModel {
 
@@ -25,6 +28,7 @@ class ProxyCloud(
         val response = try {
             http.post("$baseUrl/v1/task") {
                 bearerAuth(token)
+                header("X-Attendee", attendee)
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }
