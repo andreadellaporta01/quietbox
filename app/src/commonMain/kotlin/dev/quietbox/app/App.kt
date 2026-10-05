@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,18 +30,21 @@ fun QuietBoxApp(state: QuietBoxState) {
     QuietTheme {
         BoxWithConstraints(Modifier.fillMaxSize().background(Palette.paper).safeDrawingPadding()) {
             val wide = maxWidth > 900.dp
+            // Survives a trip into Detail and back, so the inbox keeps its scroll position.
+            val inboxScroll = rememberLazyListState()
             Row(Modifier.fillMaxSize()) {
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     Header(ui, onXray = state::toggleXray)
                     val row = ui.open?.let { open -> ui.rows.firstOrNull { it.message.id == open.id } }
-                    if (row != null) {
-                        Detail(row, ui.opened, ui.opening, onBack = state::close, modifier = Modifier.fillMaxSize())
-                    } else {
-                        Inbox(ui.rows, ui.nudges, onOpen = state::open, modifier = Modifier.fillMaxSize())
+                    when {
+                        // On a phone there is no room for a side panel: the x-ray takes over the screen.
+                        ui.xray && !wide -> XRay(state, ui, Modifier.fillMaxSize())
+                        row != null -> Detail(row, ui.opened, ui.opening, onBack = state::close, modifier = Modifier.fillMaxSize())
+                        else -> Inbox(ui.rows, ui.nudges, onOpen = state::open, listState = inboxScroll, modifier = Modifier.fillMaxSize())
                     }
                 }
-                if (ui.xray) {
-                    XRay(state, ui, Modifier.fillMaxHeight().width(if (wide) 460.dp else 300.dp))
+                if (ui.xray && wide) {
+                    XRay(state, ui, Modifier.fillMaxHeight().width(460.dp))
                 }
             }
         }

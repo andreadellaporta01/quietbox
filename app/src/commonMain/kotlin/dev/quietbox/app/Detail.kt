@@ -5,7 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -44,7 +44,7 @@ fun Detail(row: InboxRow?, opened: Opened?, opening: Boolean, onBack: () -> Unit
         Text(message.body, fontSize = 15.sp, color = Palette.ink, lineHeight = 22.sp)
 
         opened?.replies?.value?.let { replies ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 replies.options.forEach { option ->
                     Text(
                         option,

@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
@@ -31,11 +33,17 @@ import dev.quietbox.core.tasks.ActionItem
 import dev.quietbox.core.tasks.Category
 
 @Composable
-fun Inbox(rows: List<InboxRow>, nudges: List<Nudge>, onOpen: (Message) -> Unit, modifier: Modifier = Modifier) {
+fun Inbox(
+    rows: List<InboxRow>,
+    nudges: List<Nudge>,
+    onOpen: (Message) -> Unit,
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+) {
     val sections = rows
         .sortedByDescending { it.message.receivedAt }
         .groupBy { it.triage.value?.category }
-    LazyColumn(modifier) {
+    LazyColumn(modifier, state = listState) {
         if (nudges.isNotEmpty()) {
             item { NudgeStrip(nudges, onOpen) }
         }
