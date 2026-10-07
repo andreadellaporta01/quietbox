@@ -35,8 +35,10 @@ class Lab2FallbackTest {
     @Test
     fun sensitiveMessagesNeverReachTheCloud() = runTest {
         val cloud = MockCloud(1.milliseconds)
-        pipeline(cloud).run(TriageTask, bloodTest, bloodTest.subject)
+        val result = pipeline(cloud).run(TriageTask, bloodTest, bloodTest.subject)
         assertTrue(cloud.sent.isEmpty())
+        // Not reaching the cloud because nothing ran doesn't count: the device must have answered.
+        assertEquals(Tier.ON_DEVICE, result.servedBy)
     }
 
     @Test
