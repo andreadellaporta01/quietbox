@@ -35,7 +35,9 @@ git checkout start
 cd iosApp && xcodegen && open QuietBox.xcodeproj   # iOS: run the QuietBox scheme on a simulator
 ```
 
-The first build downloads a few hundred MB. If the Wi-Fi is struggling, pair with a neighbour while yours finishes.
+From an empty Gradle cache, measured on 2026-10-07: `:core:jvmTest` downloads ~730 MB (about 1′40″ on fast Wi-Fi), `:androidApp:installDebug` another ~300 MB, the iOS build another ~400 MB. If the Wi-Fi is struggling, pair with a neighbour while yours finishes.
+
+On `start` the app already runs: every unfinished lab shows up in the X-ray as a failed span ("LAB-1 not done yet") and the inbox stays unsorted until you write it.
 
 ### The real model, for free
 
