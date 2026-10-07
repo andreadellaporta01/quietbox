@@ -3,6 +3,7 @@ package dev.quietbox.app.di
 import dev.quietbox.app.detail.DetailViewModel
 import dev.quietbox.app.inbox.InboxViewModel
 import dev.quietbox.app.session.AiSession
+import dev.quietbox.app.session.PipelineSession
 import dev.quietbox.app.xray.XRayViewModel
 import dev.quietbox.core.cloud.CloudModel
 import dev.quietbox.core.inbox.Fixtures
@@ -31,8 +32,8 @@ fun cloudModule(config: PlatformConfig) = module {
 
 /** The inbox the workshop runs on, and the fixed "now" its dates are written against. */
 val dataModule = module {
-    single {
-        AiSession(
+    single<AiSession> {
+        PipelineSession(
             cloud = get(),
             engineName = get(ENGINE_NAME),
             messages = Fixtures.inbox,

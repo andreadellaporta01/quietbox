@@ -25,26 +25,49 @@ data class Environment(val conditions: Conditions = Conditions(), val chaos: Boo
 /**
  * The app's single source of truth for everything AI: which cloud, which conditions, the shared
  * token budget and telemetry. A singleton in Koin, so the inbox, the detail and the x-ray agree.
- * The ViewModels never build a Pipeline themselves.
+ * The ViewModels depend on this interface and never build a Pipeline themselves.
  */
-class AiSession(
+interface AiSession {
+    val engineName: String
+    val telemetry: Telemetry
+    val budget: TokenBudget
+    val environment: StateFlow<Environment>
+
+    /** Bumped whenever the environment changes, so screens know their results are stale. */
+    val generation: StateFlow<Int>
+
+    /** The last sweep, so a screen that only has a message id can find its triage and extraction. */
+    val rows: StateFlow<List<Row>>
+
+    suspend fun sweep(): List<Row>
+
+    fun nudges(rows: List<Row>): List<Nudge>
+
+    suspend fun open(message: Message, triage: Triage?): Opened
+
+    fun update(change: (Environment) -> Environment)
+
+    fun reset()
+}
+
+/** The real one: the core [Pipeline] over a [CloudModel], rebuilt for the current [Environment]. */
+class PipelineSession(
     cloud: CloudModel,
-    val engineName: String,
+    override val engineName: String,
     private val messages: List<Message>,
     private val history: List<Message>,
     private val now: () -> LocalDateTime,
-    val telemetry: Telemetry = Telemetry(),
-    val budget: TokenBudget = TokenBudget(limit = 20_000),
-) {
+    override val telemetry: Telemetry = Telemetry(),
+    override val budget: TokenBudget = TokenBudget(limit = 20_000),
+) : AiSession {
     private val calm = cloud
     private val chaotic = FlakyCloud(cloud, extraLatency = 1200.milliseconds, failureRate = 0.3, malformedRate = 0.2)
 
     private val _environment = MutableStateFlow(Environment())
-    val environment: StateFlow<Environment> = _environment.asStateFlow()
+    override val environment: StateFlow<Environment> = _environment.asStateFlow()
 
-    /** Bumped whenever the environment changes, so screens know their results are stale. */
     private val _generation = MutableStateFlow(0)
-    val generation: StateFlow<Int> = _generation.asStateFlow()
+    override val generation: StateFlow<Int> = _generation.asStateFlow()
 
     private fun engine(): InboxEngine {
         val env = _environment.value
@@ -52,22 +75,21 @@ class AiSession(
         return InboxEngine(pipeline, messages, history)
     }
 
-    /** The last sweep, so a screen that only has a message id can find its triage and extraction. */
     private val _rows = MutableStateFlow<List<Row>>(emptyList())
-    val rows: StateFlow<List<Row>> = _rows.asStateFlow()
+    override val rows: StateFlow<List<Row>> = _rows.asStateFlow()
 
-    suspend fun sweep(): List<Row> = engine().sweep().also { _rows.value = it }
+    override suspend fun sweep(): List<Row> = engine().sweep().also { _rows.value = it }
 
-    fun nudges(rows: List<Row>): List<Nudge> = engine().nudges(now(), rows)
+    override fun nudges(rows: List<Row>): List<Nudge> = engine().nudges(now(), rows)
 
-    suspend fun open(message: Message, triage: Triage?): Opened = engine().open(message, triage)
+    override suspend fun open(message: Message, triage: Triage?): Opened = engine().open(message, triage)
 
-    fun update(change: (Environment) -> Environment) {
+    override fun update(change: (Environment) -> Environment) {
         _environment.update(change)
         _generation.update { it + 1 }
     }
 
-    fun reset() {
+    override fun reset() {
         budget.reset()
         telemetry.clear()
         _generation.update { it + 1 }
