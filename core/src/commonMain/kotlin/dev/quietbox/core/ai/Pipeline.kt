@@ -25,7 +25,21 @@ class Pipeline(
 
     fun invalidate() = cache.clear()
 
-    suspend fun <I, O> run(task: AiTask<I, O>, input: I, subject: String): AiResult<O> {
+    /**
+     * On the `start` branch the labs are TODO()s. The app still has to open: an unfinished lab
+     * becomes a FAILED span that says which lab, so the X-ray shows exactly what's missing.
+     */
+    suspend fun <I, O> run(task: AiTask<I, O>, input: I, subject: String): AiResult<O> = try {
+        runTiers(task, input, subject)
+    } catch (todo: NotImplementedError) {
+        val lab = todo.message?.substringAfter("LAB-", "")?.take(1)?.let { "LAB-$it" } ?: "a lab"
+        telemetry.record(
+            Span(task.spec.name, task.spec.promptVersion, subject, "$lab not done yet", emptyList(), null, Outcome.FAILED, null, 0, 0, 0),
+        )
+        AiResult(null, null, null, Outcome.FAILED)
+    }
+
+    private suspend fun <I, O> runTiers(task: AiTask<I, O>, input: I, subject: String): AiResult<O> {
         val key = "${task.spec.name}@v${task.spec.promptVersion}:${task.id(input)}"
         @Suppress("UNCHECKED_CAST")
         (cache[key] as AiResult<O>?)?.let { return it.copy(servedBy = Tier.CACHE) }

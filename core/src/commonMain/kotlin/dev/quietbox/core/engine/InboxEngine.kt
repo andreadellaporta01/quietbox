@@ -65,6 +65,10 @@ class InboxEngine(
         Opened(summary?.await(), replies?.await())
     }
 
-    fun nudges(now: LocalDateTime, rows: List<Row>): List<Nudge> =
+    /** Lab 4 is a stretch: until it's written, the inbox simply has no banners. */
+    fun nudges(now: LocalDateTime, rows: List<Row>): List<Nudge> = try {
         Proactive.nudges(now, rows.associate { row -> row.message to (row.extraction.value?.actions ?: emptyList<ActionItem>()) })
+    } catch (_: NotImplementedError) {
+        emptyList()
+    }
 }
