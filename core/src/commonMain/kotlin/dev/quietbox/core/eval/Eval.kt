@@ -26,6 +26,8 @@ data class Scoreboard(
     val p50Ms: Long,
     val p95Ms: Long,
     val failures: Int,
+    /** Why cloud attempts failed, e.g. "unauthorized" → 31. A 0% cloud share is only a result if this is empty. */
+    val cloudErrors: Map<String, Int> = emptyMap(),
 ) {
     fun render(): String = buildString {
         appendLine("── QuietBox eval · engine=$engine · ${Fixtures.all.size} messages ──")
@@ -39,6 +41,19 @@ data class Scoreboard(
         appendLine("cloud tokens           $cloudTokens")
         appendLine("latency p50 / p95      ${p50Ms} ms / ${p95Ms} ms")
         append("hard failures          $failures")
+        if (cloudErrors.isNotEmpty()) {
+            appendLine()
+            append("cloud errors           ${cloudErrors.entries.sortedByDescending { it.value }.joinToString(" · ") { "${it.value} × ${it.key}" }}")
+            hint()?.let { appendLine(); append("                       ← $it") }
+        }
+    }
+
+    /** The one line that tells you whether you measured the model or your setup. */
+    private fun hint(): String? = when {
+        "unauthorized" in cloudErrors -> "the cloud refused every call: check App Check is Unenforced for Firebase AI Logic"
+        "rate_limited" in cloudErrors -> "free-tier quota: the numbers above are partly the device's, not the model's"
+        "offline" in cloudErrors -> "no network to the model"
+        else -> null
     }
 }
 
@@ -90,6 +105,10 @@ object Eval {
             p50Ms = latencies.percentile(0.5),
             p95Ms = latencies.percentile(0.95),
             failures = spans.count { it.outcome == Outcome.FAILED },
+            cloudErrors = spans.flatMap { it.attempts }
+                .filter { it.tier == Tier.CLOUD && !it.ok }
+                .groupingBy { it.note.substringBefore(" after").substringBefore(":").trim() }
+                .eachCount(),
         )
     }
 
