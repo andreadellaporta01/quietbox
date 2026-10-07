@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -13,7 +14,7 @@ android {
         targetSdk = libs.versions.android.compile.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "ENGINE", "\"${providers.gradleProperty("quietbox.engine").getOrElse("mock")}\"")
+        buildConfigField("String", "ENGINE", "\"${providers.gradleProperty("quietbox.engine").getOrElse("firebase")}\"")
         buildConfigField("String", "PROXY_URL", "\"${providers.gradleProperty("quietbox.proxy").getOrElse("")}\"")
         buildConfigField("String", "TOKEN", "\"${providers.gradleProperty("quietbox.token").getOrElse("")}\"")
     }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "656039256370",
+    "project_id": "quietbox-berlin",
+    "storage_bucket": "quietbox-berlin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:656039256370:android:e1d6e80e0f3a1d13e7f72b",
+        "android_client_info": {
+          "package_name": "dev.quietbox"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8RgjW5sGyoH_nXpVqyqsm9FEUlw5kX8M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

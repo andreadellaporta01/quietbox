@@ -4,7 +4,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".QuietBoxApplication"
         android:label="QuietBox"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.QuietBox">

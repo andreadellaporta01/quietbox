@@ -58,4 +58,8 @@ tasks.register<JavaExec>("eval") {
     args = listOfNotNull(providers.gradleProperty("engine").orNull)
     environment("QUIETBOX_PROXY_URL", providers.environmentVariable("QUIETBOX_PROXY_URL").getOrElse(""))
     environment("QUIETBOX_TOKEN", providers.environmentVariable("QUIETBOX_TOKEN").getOrElse(""))
+    workingDir = rootProject.projectDir
+    listOf("QUIETBOX_GOOGLE_SERVICES", "QUIETBOX_MODEL").forEach { key ->
+        providers.environmentVariable(key).orNull?.let { environment(key, it) }
+    }
 }

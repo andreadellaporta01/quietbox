@@ -7,44 +7,66 @@ QuietBox is an inbox with no chatbot. The AI is in it, but you never see it as a
 
 | What you see | Task behind it | Where it runs |
 |---|---|---|
-| Messages sorted into *Needs you / Someone's waiting / FYI / Quiet* | `triage` (routing) | on-device first, cloud when unsure |
-| A chip with *date · time · amount* under a message | `extract` (extraction) | on-device first, cloud when unsure |
+| Messages sorted into *Needs you / Someone's waiting / FYI / Quiet* | `triage` (routing) | on-device first, Gemini when unsure |
+| A chip with *date · time · amount* under a message | `extract` (extraction) | on-device first, Gemini when unsure |
 | "Today: send offline-mode estimate" banner | `Proactive.nudges` (ranking) | pure code over extracted data |
-| One-line TL;DR on a long thread | `summarize` (generation + retrieval) | cloud, on open |
-| Three reply chips | `reply` (generation → action) | cloud, on open |
+| One-line TL;DR on a long thread | `summarize` (generation + retrieval) | Gemini, on open |
+| Three reply chips | `reply` (generation → action) | Gemini, on open |
+
+The cloud model is **Gemini through Firebase AI Logic**, called from shared Kotlin on both Android and iOS.
 
 The **AI X-ray** panel on the right shows every call: which route was picked and why, what was tried, tokens, latency, and whether the result was shown or hidden.
 
 ---
 
-## Setup (≈5 minutes)
+## Setup (≈10 minutes)
 
-You need **JDK 17+** and nothing else. No Android SDK, no Xcode, no API key.
+This is a mobile workshop, so you need the mobile toolchain:
+
+- **JDK 17+** (for the labs, which run as plain JVM tests)
+- **Android:** Android Studio or the Android SDK, plus an emulator or a phone
+- **iOS (optional):** Xcode 26+ and `brew install xcodegen`
 
 ```bash
 git clone https://github.com/andreadellaporta01/quietbox && cd quietbox
 git checkout start
-./gradlew :core:jvmTest          # ✅ setup works if this ends with "20 tests completed, 20 failed"
-./gradlew :app:run               # the desktop app (the same Compose code that runs on Android and iOS)
+./gradlew :core:jvmTest              # ✅ setup works if this ends with "20 tests completed, 20 failed"
+./gradlew :androidApp:installDebug   # the app on your emulator or phone
+cd iosApp && xcodegen && open QuietBox.xcodeproj   # iOS: run the QuietBox scheme on a simulator
 ```
 
-The first build downloads about 390 MB. If the Wi-Fi is struggling, pair with a neighbour while yours finishes.
+The first build downloads a few hundred MB. If the Wi-Fi is struggling, pair with a neighbour while yours finishes.
 
-Optional: if you have the Android SDK, `./gradlew :androidApp:installDebug` installs the app on a device. If you have Xcode, run `cd iosApp && xcodegen && open QuietBox.xcodeproj`.
+### The real model, for free
+
+The app talks to **Gemini through Firebase AI Logic** out of the box. The repo ships the config files of a shared project (`quietbox-berlin`) on the free Gemini Developer API tier: no billing, no API key to paste.
+
+The free tier's quota is **per project**, and the whole room shares this one. When it runs out, cloud calls come back `rate_limited` and the app quietly falls back to the device. That's Lab 2 happening for real, and you can watch it in the X-ray.
+
+### Optional: your own Firebase project (≈5 minutes)
+
+Want a quota all to yourself? Create your own project and swap two files. Nothing else changes.
+
+1. [console.firebase.google.com](https://console.firebase.google.com) → **Create project** (no Google Analytics needed, no billing).
+2. **AI Services → AI Logic → Get started → Gemini Developer API**.
+3. Add an **Android app** with package `dev.quietbox` → download `google-services.json` into `androidApp/`.
+   Add an **iOS app** with bundle id `dev.quietbox.app` → download `GoogleService-Info.plist` into `iosApp/QuietBox/`.
+4. **Security → App Check → APIs → Firebase AI Logic → Unenforced.** New projects enforce it by default, and without a registered debug token every call fails with 403.
+5. Rebuild the app. `./gradlew :core:eval -Pengine=firebase` reads the same `google-services.json`, so the eval uses your project too.
+
+> If your first call says `genai config not found`, the project is still provisioning. Wait two or three minutes and try again.
+
+App Check is **off only for the workshop**. In production, App Check (Play Integrity / App Attest) is what stops someone else from spending your quota with the key inside your app. Firebase makes it mandatory from 2 November 2026.
 
 ### Engines
 
-Every command uses the **mock** engine by default. It is deterministic, works offline, and behaves like a real model would, including the occasional bad answer. That's all you need for the workshop.
-
-Want the real model afterwards? Run the proxy with your own key (see [Running the proxy yourself](#running-the-proxy-yourself)), then:
-
 ```bash
-export QUIETBOX_ENGINE=proxy QUIETBOX_PROXY_URL=http://localhost:8787 QUIETBOX_TOKEN=any-shared-secret
-./gradlew :app:run
-./gradlew :core:eval -Pengine=proxy
+./gradlew :core:eval                       # mock: deterministic, offline, behaves like a model (including a bad answer)
+./gradlew :core:eval -Pengine=firebase     # Gemini via Firebase AI Logic
+./gradlew :core:eval -Pengine=offline      # no network: everything on-device
+./gradlew :core:eval -Pengine=chaos        # 30% server errors, 20% broken JSON, +0.9 s
+./gradlew :androidApp:installDebug -Pquietbox.engine=mock   # the app without the network
 ```
-
-The API key stays on the proxy and never reaches the app. That is part of the lesson.
 
 ---
 
@@ -80,22 +102,33 @@ core/   KMP, no UI. Everything that matters.
   ai/         AiTask contract, TaskSpec (budgets), Router, Pipeline, TokenBudget
   tasks/      Triage · Extract · Summarize · SmartReply   (one file per task: prompt, schema, validator, on-device path)
   local/      on-device building blocks: Sensitivity (privacy), Retriever, text heuristics
-  cloud/      CloudModel · MockCloud · ProxyCloud · FlakyCloud (chaos)
+  cloud/      CloudModel · FirebaseCloud (Gemini) · MockCloud · FlakyCloud (chaos) · ProxyCloud
   engine/     InboxEngine (when each task fires) · Proactive (nudges)
   telemetry/  Span per call, the data behind the X-ray
   eval/       golden-set scoreboard  →  ./gradlew :core:eval
-app/        Compose Multiplatform UI (desktop · Android · iOS)
+app/        Compose Multiplatform UI (Android · iOS), MVI on KMP ViewModels, Koin
+  mvi/        MviViewModel: Intent → Result → pure reduce → State, one-shot Effects on a Channel
+  session/    AiSession: the one place that builds a Pipeline (cloud, conditions, budget, telemetry)
+  inbox/      InboxContract (State · Intent · Result · Effect) · InboxViewModel · InboxScreen
+  detail/     DetailContract · DetailViewModel (summary + replies, cancelled when you leave) · DetailScreen
+  xray/       XRayContract · XRayViewModel (the demo levers) · XRayScreen
+  di/         Koin modules: cloud (Firebase / mock / proxy) · data · presentation
 androidApp/ Android shell (one Activity)
 iosApp/     iOS shell (one SwiftUI file, xcodegen)
-proxy/      Ktor server calling Claude (structured outputs, effort, refusal fallbacks)
+proxy/      optional: a server-side proxy, for when the key must never ship in the app
 ```
+
+**Why MVI on top of the AI layer.** Every AI result is a value with an outcome (shown, hidden, failed). The screens never call a model: they send an `Intent`, and a pure reducer turns *what happened* into the next `State`. That is how "the app shows less, never something wrong" stays true in the UI too: there is no code path where a failed call becomes an error dialog. Reducers and ViewModels are tested in `app/src/commonTest` (`./gradlew :app:iosSimulatorArm64Test`).
 
 The "on-device model" in this repo uses heuristics, on purpose. The architecture doesn't care what sits behind `AiTask.onDevice()`: a regex, Gemini Nano through ML Kit GenAI, Apple's Foundation Models, or a TFLite classifier. The contract is the same: return a value **and a confidence**, or `null`.
 
-## Running the proxy yourself
+## Optional: the server-side proxy
+
+Firebase AI Logic is the client-side pattern: the app calls the model directly, and App Check keeps other clients out. When the provider key must never reach the device, put a proxy in front instead:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...      # yours
 export QUIETBOX_TOKEN=any-shared-secret
-./gradlew :proxy:run                     # :8787, model claude-opus-5-5, structured outputs, low effort for background tasks
+./gradlew :proxy:run                     # :8787, structured outputs, low effort for background tasks
+QUIETBOX_PROXY_URL=http://localhost:8787 QUIETBOX_TOKEN=any-shared-secret ./gradlew :core:eval -Pengine=proxy
 ```

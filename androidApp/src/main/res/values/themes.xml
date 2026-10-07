@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.QuietBox" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">#F7F5F0</item>
+    <style name="Theme.QuietBox" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B0B1A</item>
     </style>
 </resources>

@@ -3,6 +3,15 @@ import QuietBoxKit
 
 @main
 struct QuietBoxApp: App {
+    init() {
+        let env = ProcessInfo.processInfo.environment
+        MainViewControllerKt.startQuietBox(
+            engine: env["QUIETBOX_ENGINE"],
+            proxyUrl: env["QUIETBOX_PROXY_URL"],
+            token: env["QUIETBOX_TOKEN"]
+        )
+    }
+
     var body: some Scene {
         WindowGroup {
             ComposeView().ignoresSafeArea()
@@ -12,12 +21,7 @@ struct QuietBoxApp: App {
 
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        let env = ProcessInfo.processInfo.environment
-        return MainViewControllerKt.MainViewController(
-            engine: env["QUIETBOX_ENGINE"],
-            proxyUrl: env["QUIETBOX_PROXY_URL"],
-            token: env["QUIETBOX_TOKEN"]
-        )
+        MainViewControllerKt.MainViewController(still: ProcessInfo.processInfo.environment["QUIETBOX_STILL"])
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}

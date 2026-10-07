@@ -14,8 +14,6 @@ if (hasAndroidSdk) pluginManager.apply("com.android.kotlin.multiplatform.library
 kotlin {
     jvmToolchain(17)
 
-    jvm("desktop")
-
     if (hasAndroidSdk) {
         extensions.configure<com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget>("android") {
             namespace = "dev.quietbox.app"
@@ -38,29 +36,17 @@ kotlin {
             implementation(libs.compose.foundation)
             implementation(libs.compose.ui)
             implementation(libs.compose.material)
+            implementation(libs.compose.backhandler)
+            implementation(libs.lifecycle.viewmodel)
+            implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.lifecycle.runtime.compose)
+            api(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
         }
-        named("desktopMain").dependencies {
-            implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutines.swing)
-        }
-        named("desktopTest").dependencies {
+        commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
-}
-
-compose.desktop {
-    application {
-        mainClass = "dev.quietbox.app.MainKt"
-    }
-}
-
-tasks.withType<JavaExec>().matching { it.name == "run" }.configureEach {
-    listOf("QUIETBOX_ENGINE", "QUIETBOX_PROXY_URL", "QUIETBOX_TOKEN").forEach { key ->
-        providers.environmentVariable(key).orNull?.let { environment(key, it) }
-    }
-}
-
-tasks.named<Test>("desktopTest") {
-    systemProperty("stills.dir", rootProject.layout.projectDirectory.dir("docs/stills").asFile.absolutePath)
 }
