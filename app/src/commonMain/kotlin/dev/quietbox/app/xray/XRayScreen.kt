@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -20,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,8 +44,19 @@ fun XRayScreen(state: XRayContract.State, onIntent: (XRayContract.Intent) -> Uni
             Toggle("reset", false) { onIntent(XRayContract.Intent.Reset) }
         }
         Stats(state)
+        Search(state.query) { onIntent(XRayContract.Intent.Search(it)) }
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            XRayContract.Lens.entries.forEach { lens ->
+                Toggle("${lens.label} ${state.lensCounts[lens] ?: 0}", state.lens == lens && lens != XRayContract.Lens.All) {
+                    onIntent(XRayContract.Intent.Focus(lens))
+                }
+            }
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(state.spans) { SpanRow(it) }
+            items(state.visible) { SpanRow(it) }
+            if (state.visible.isEmpty() && state.spans.isNotEmpty()) {
+                item { Text("no span matches", color = Palette.xrayText.copy(alpha = 0.6f), fontFamily = FontFamily.Monospace, fontSize = 11.sp) }
+            }
         }
     }
 }
@@ -56,6 +72,28 @@ private fun Toggle(label: String, on: Boolean, onClick: () -> Unit) {
         color = Color.White,
         fontSize = 11.sp,
         fontFamily = FontFamily.Monospace,
+    )
+}
+
+@Composable
+private fun Search(query: String, onChange: (String) -> Unit) {
+    val style = TextStyle(color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+    BasicTextField(
+        value = query,
+        onValueChange = onChange,
+        singleLine = true,
+        textStyle = style,
+        cursorBrush = SolidColor(Palette.accent),
+        modifier = Modifier.fillMaxWidth().background(Color(0xFF14132B), RoundedCornerShape(6.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
+        decorationBox = { field ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) Text("search: blood, rate_limited, timeout…", style = style.copy(color = Palette.xrayText.copy(alpha = 0.5f)))
+                    field()
+                }
+                if (query.isNotEmpty()) Text("✕", color = Palette.xrayText, fontSize = 12.sp, modifier = Modifier.clickable { onChange("") }.padding(start = 8.dp))
+            }
+        },
     )
 }
 

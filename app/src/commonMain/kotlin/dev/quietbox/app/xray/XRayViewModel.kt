@@ -27,6 +27,8 @@ class XRayViewModel(private val session: AiSession) :
             Intent.ToggleBatteryLow -> session.update { it.copy(conditions = it.conditions.copy(batteryLow = !it.conditions.batteryLow)) }
             Intent.ToggleChaos -> session.update { it.copy(chaos = !it.chaos) }
             Intent.Reset -> session.reset()
+            is Intent.Search -> dispatch(Result.Searched(intent.query))
+            is Intent.Focus -> dispatch(Result.Focused(intent.lens))
         }
     }
 
@@ -36,5 +38,8 @@ class XRayViewModel(private val session: AiSession) :
 object XRayReducer : (State, Result) -> State {
     override fun invoke(state: State, result: Result): State = when (result) {
         is Result.Observed -> state.copy(environment = result.environment, spans = result.spans, tokensSpent = result.tokensSpent)
+        is Result.Searched -> state.copy(query = result.query)
+        // Tapping the lens that's already on turns it off.
+        is Result.Focused -> state.copy(lens = if (state.lens == result.lens) XRayContract.Lens.All else result.lens)
     }
 }
