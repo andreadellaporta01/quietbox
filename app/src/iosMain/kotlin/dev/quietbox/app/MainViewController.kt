@@ -1,9 +1,15 @@
 package dev.quietbox.app
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.window.ComposeUIViewController
 import dev.quietbox.app.di.FirebaseConfig
 import dev.quietbox.app.di.PlatformConfig
 import dev.quietbox.app.di.initKoin
+import dev.quietbox.app.session.AiSession
+import dev.quietbox.app.xray.XRayContract
+import dev.quietbox.app.xray.XRayViewModel
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 import platform.Foundation.NSBundle
 import platform.Foundation.NSDictionary
 import platform.Foundation.dictionaryWithContentsOfFile
@@ -14,11 +20,20 @@ fun startQuietBox(engine: String?, proxyUrl: String?, token: String?) =
     initKoin(PlatformConfig(engine, firebaseConfig(), proxyUrl, token))
 
 /**
- * [still] puts the app in a named state for slide screenshots, e.g. "xray" or "detail:m15".
+ * [still] puts the app in a named state for slide screenshots, e.g. "xray", "chaos" or "detail:m15".
  * Simulators can't be tapped from a script, so this is how the iOS stills are made.
+ * "chaos" is the Lab 2 still: chaos on, x-ray open on the fallback lens.
  */
 fun MainViewController(still: String? = null): UIViewController = ComposeUIViewController {
-    QuietBoxApp(startWithXray = still == "xray", initialOpenId = still?.removePrefix("detail:")?.takeIf { still.startsWith("detail:") })
+    if (still == "chaos") {
+        val session = koinInject<AiSession>()
+        val xray = koinViewModel<XRayViewModel>()
+        LaunchedEffect(Unit) {
+            session.update { it.copy(chaos = true) }
+            xray.onIntent(XRayContract.Intent.Focus(XRayContract.Lens.Fallback))
+        }
+    }
+    QuietBoxApp(startWithXray = still == "xray" || still == "chaos", initialOpenId = still?.removePrefix("detail:")?.takeIf { still.startsWith("detail:") })
 }
 
 // GoogleService-Info.plist, the file the Firebase console hands out for the iOS app.
