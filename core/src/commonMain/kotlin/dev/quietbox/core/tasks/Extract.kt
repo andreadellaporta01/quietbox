@@ -86,19 +86,23 @@ object ExtractTask : AiTask<Message, Extraction> {
 
     override fun privacy(input: Message) = Sensitivity.of(input)
 
-    // region LAB-3
-    override fun validate(input: Message, output: Extraction): List<String> = buildList {
-        if (output.actions.size > 3) add("more than 3 actions")
-        val source = Text.normalize(input.fullText)
-        output.actions.forEachIndexed { i, action ->
-            if (action.title.isBlank()) add("actions[$i].title is empty")
-            action.date?.let { if (runCatching { LocalDate.parse(it) }.isFailure) add("actions[$i].date '$it' is not yyyy-MM-dd") }
-            action.time?.let { if (runCatching { LocalTime.parse(it) }.isFailure) add("actions[$i].time '$it' is not HH:mm") }
-            if (!source.contains(Text.normalize(action.evidence))) add("actions[$i].evidence is not a quote from the message")
-            action.amount?.let { if (!source.contains(Text.normalize(it))) add("actions[$i].amount '$it' does not appear in the message") }
-        }
-    }
-    // endregion
+    // LAB-3 · Guard. The schema guarantees the shape, not the truth. Return every reason this
+    // extraction is unacceptable; an empty list means "ship it". The reasons are also sent back to
+    // the model as a repair prompt, so make them specific, e.g. "actions[0].evidence is not a quote from the message".
+    //
+    // Rules (output.actions is a List<ActionItem>: type, title, date?, time?, amount?, evidence):
+    //   1. at most 3 actions                                          rejectsMoreThanThreeItems
+    //   2. date, if present, parses with LocalDate.parse  (yyyy-MM-dd)  rejectsDatesThatAreNotIso
+    //      time, if present, parses with LocalTime.parse  (HH:mm)
+    //   3. evidence is a verbatim quote from input.fullText            rejectsEvidenceThatIsNotAQuote
+    //   4. amount, if present, literally appears in input.fullText     rejectsAnAmountThatIsNotInTheMessage
+    //   (and a grounded item passes: acceptsAGroundedItem)
+    //
+    // Compare Text.normalize(input.fullText) with Text.normalize(...) of the quote, never raw strings:
+    // whitespace and punctuation differ. runCatching { LocalDate.parse(it) }.isFailure is the date check.
+    // Shape:  = buildList { if (output.actions.size > 3) add("more than 3 actions"); output.actions.forEachIndexed { i, a -> ... } }
+    override fun validate(input: Message, output: Extraction): List<String> =
+        TODO("LAB-3: reject anything the message does not literally support.")
 
     override fun onDevice(input: Message): Scored<Extraction> {
         val body = input.fullText

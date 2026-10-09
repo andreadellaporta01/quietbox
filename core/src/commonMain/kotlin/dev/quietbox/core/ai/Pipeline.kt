@@ -54,38 +54,31 @@ class Pipeline(
         var invalidSeen = false
 
         var served: Pair<Tier, Scored<O>>? = null
-        // region LAB-2
+        // LAB-2 · Fall back. Walk the tiers the router chose, in order, until one gives a valid answer.
+        //
+        // You have:
+        //   local                  onDevice()'s answer: Scored(value, confidence), or null
+        //   task.validate(input, v)  reasons v is unacceptable; empty list = valid
+        //   callCloud(task, input)   already does timeout, one retry, one repair. Returns a CloudOutcome:
+        //                            .value (null if it failed) · .note · .invalid · .inputTokens · .outputTokens
+        //   CLOUD_CONFIDENCE         the confidence we give a validated cloud answer
+        //   val mark = TimeSource.Monotonic.markNow() ... mark.ms()   elapsed milliseconds
+        //
+        // For each tier:
+        //   ON_DEVICE  local == null          -> attempts += Attempt(tier, false, 0, "no on-device path")
+        //              validate() not empty   -> invalidSeen = true; attempts += Attempt(tier, false, ms, "local output failed validation")
+        //              otherwise              -> attempts += Attempt(tier, true, ms, "conf ${local.confidence.fmt()}"); served = tier to local
+        //   CLOUD      add the outcome's tokens to inTokens / outTokens, then
+        //              value != null          -> attempts += Attempt(tier, true, ms, outcome.note); served = tier to Scored(value, CLOUD_CONFIDENCE)
+        //              otherwise              -> invalidSeen = invalidSeen || outcome.invalid; attempts += Attempt(tier, false, ms, outcome.note)
+        //   CACHE      nothing (the cache was checked above)
+        // Then: if (served != null) break. Every Attempt is a line in the X-ray, so record failures too.
+        //
+        // Tests: sensitiveMessagesNeverReachTheCloud · slowCloudFallsBackToDevice (checks the exact
+        // attempt list: forget the break and it's too long) · unsureAnswersAreHiddenNotShown · secondRunIsServedFromCache
         for (tier in route.tiers) {
-            val mark = TimeSource.Monotonic.markNow()
-            when (tier) {
-                Tier.ON_DEVICE -> {
-                    if (local == null) {
-                        attempts += Attempt(tier, false, 0, "no on-device path")
-                    } else if (task.validate(input, local.value).isNotEmpty()) {
-                        invalidSeen = true
-                        attempts += Attempt(tier, false, mark.ms(), "local output failed validation")
-                    } else {
-                        attempts += Attempt(tier, true, mark.ms(), "conf ${local.confidence.fmt()}")
-                        served = tier to local
-                    }
-                }
-                Tier.CLOUD -> {
-                    val outcome = callCloud(task, input)
-                    inTokens += outcome.inputTokens
-                    outTokens += outcome.outputTokens
-                    if (outcome.value != null) {
-                        attempts += Attempt(tier, true, mark.ms(), outcome.note)
-                        served = tier to Scored(outcome.value, CLOUD_CONFIDENCE)
-                    } else {
-                        invalidSeen = invalidSeen || outcome.invalid
-                        attempts += Attempt(tier, false, mark.ms(), outcome.note)
-                    }
-                }
-                Tier.CACHE -> Unit
-            }
-            if (served != null) break
+            TODO("LAB-2: try each tier in order, record an Attempt, stop at the first valid answer.")
         }
-        // endregion
 
         val pick = served
         val result: AiResult<O> = when {
