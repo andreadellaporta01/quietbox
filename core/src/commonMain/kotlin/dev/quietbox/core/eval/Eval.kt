@@ -28,6 +28,8 @@ data class Scoreboard(
     val failures: Int,
     /** Why cloud attempts failed, e.g. "unauthorized" → 31. A 0% cloud share is only a result if this is empty. */
     val cloudErrors: Map<String, Int> = emptyMap(),
+    /** Answers the validator rejected and the model then fixed: "extract · subject" → the first reason. */
+    val repaired: List<Pair<String, String>> = emptyList(),
 ) {
     fun render(): String = buildString {
         appendLine("── QuietBox eval · engine=$engine · ${Fixtures.all.size} messages ──")
@@ -41,6 +43,11 @@ data class Scoreboard(
         appendLine("cloud tokens           $cloudTokens")
         appendLine("latency p50 / p95      ${p50Ms} ms / ${p95Ms} ms")
         append("hard failures          $failures")
+        repaired.forEach { (what, why) ->
+            appendLine()
+            append("repaired               $what")
+            appendLine(); append("                       ← $why")
+        }
         if (cloudErrors.isNotEmpty()) {
             appendLine()
             append("cloud errors           ${cloudErrors.entries.sortedByDescending { it.value }.joinToString(" · ") { "${it.value} × ${it.key}" }}")
@@ -109,6 +116,10 @@ object Eval {
                 .filter { it.tier == Tier.CLOUD && !it.ok }
                 .groupingBy { it.note.substringBefore(" after").substringBefore(":").trim() }
                 .eachCount(),
+            repaired = spans.mapNotNull { span ->
+                span.attempts.firstOrNull { it.ok && "repaired: " in it.note }
+                    ?.let { "${span.task} · ${span.subject}" to it.note.substringAfter("repaired: ") }
+            },
         )
     }
 

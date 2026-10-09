@@ -159,7 +159,9 @@ class Pipeline(
             val errors = task.validate(input, parsed)
             if (errors.isEmpty()) {
                 val retried = if (attempt > 0) ", ${attempt + 1} tries" else ""
-                return CloudOutcome(parsed, "${reply.model}$retried", inputTokens = inTokens, outputTokens = outTokens)
+                // A repair says what it repaired: that's the line the eval and the X-ray point at.
+                val repaired = if (feedback.isNotEmpty()) " · repaired: ${feedback.first()}" else ""
+                return CloudOutcome(parsed, "${reply.model}$retried$repaired", inputTokens = inTokens, outputTokens = outTokens)
             }
             feedback = errors
         }

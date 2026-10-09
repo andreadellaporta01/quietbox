@@ -63,3 +63,12 @@ tasks.register<JavaExec>("eval") {
         providers.environmentVariable(key).orNull?.let { environment(key, it) }
     }
 }
+
+// One line per test, green or red: in a lab you want to see which rule passes, not just a total.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("passed", "failed", "skipped")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.SHORT
+        showStandardStreams = false
+    }
+}
